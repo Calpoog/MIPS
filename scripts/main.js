@@ -1,4 +1,4 @@
-require(["arch/instruction"], function(Instruction) {
+require(["underscore", "arch/instruction"], function(_, Instruction) {
     _.each([
             "slt $2,$3,$4",
             "mfcZ $2,$3",
@@ -22,6 +22,6 @@ require(["arch/instruction"], function(Instruction) {
             "lui $sp, 383"
         ], function(val) {
         var i = new Instruction(val);
-        console.log(i.props())
-    })
+        console.log(i.props());
+    });
 });

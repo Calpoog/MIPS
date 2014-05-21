@@ -22,7 +22,7 @@ define(["underscore"], function(_) {
             addr: null,
             type: null,
             errors: []
-        }
+        };
         this._props = props;
         
         // first determine instruction type
@@ -107,28 +107,35 @@ define(["underscore"], function(_) {
         // public stuff that needs access to private vars
         this.props = function() {
             return props;
-        }
+        };
     }
     
     // private static helper methods
     function isNumber(val) {
-        return (parseInt(val) != NaN);
+        return (!isNaN(parseInt(val,10)));
     }
     
-    // public instance methods
-    this.props = function() {
+    /*
+     * public instance methods
+     */
+    Instruction.prototype.props = function() {
         return this._props;
-    }
+    };
+    
+    // set error state on condition
+    Instruction.prototype._errorIf = function(cond, error) {
+        
+    };
     
     // verify length and validity of instruction params
-    this.verifyRegisters = function() {
+    Instruction.prototype._verifyRegisters = function() {
         var props = this._props,
             val = null;
         // check immediate for number vs label
         if (isNumber(props.immediate[0])) {
             // treat it as number
-            val = parseInt(props.immediate);
-            if (val != NaN) {
+            val = parseInt(props.immediate,10);
+            if (!isNaN(val)) {
                 props.immediate = val;
             } else {
                 props.errors.push("Invalid immediate value or label name");
@@ -144,9 +151,9 @@ define(["underscore"], function(_) {
                 bits = reg.match(/([a-z])(\d)/);
             
             if (isNumber(reg)) {
-                props[register] = parseInt(reg);
+                props[register] = parseInt(reg, 10);
             } else if (bits) {
-                bits[1] = parseInt(bits[1]);
+                bits[1] = parseInt(bits[1], 10);
                 switch(bits[0]) {
                     case 'v':
                         // TODO validate within range of V
@@ -163,21 +170,22 @@ define(["underscore"], function(_) {
                         }
                         break;
                     case 's':
-                        props[register] = bits[1] + 2;
+                        props[register] = bits[1] + 16;
                         break;
                     case 'k':
+                        props[register] = bits[1] + 26;
                         break;
                 }
             }
         });
-    }
+    };
     
     // public static properties
     
     // public static methods
     Instruction.getInstructionCount = function() {
         return instrCount;
-    }
+    };
     
     return Instruction;
     
