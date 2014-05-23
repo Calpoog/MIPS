@@ -3,7 +3,7 @@ define(["underscore", "arch/tokenizer", "arch/data", "arch/text"], function(_, T
                       'float','globl','half','kdata','ktext','space','text','word'];
     
     function Program(text) {
-        var self = this;
+        var self = this,
             lines = Tokenizer.tokenize(text);
         
         self.data = new Data();
@@ -47,6 +47,10 @@ define(["underscore", "arch/tokenizer", "arch/data", "arch/text"], function(_, T
         var self = this;
         
         self.text.processInstr(line);
+    };
+    
+    Program.prototype.getInstructions = function() {
+       return this.text.getInstructions(); 
     };
     
     Program.prototype.display = function() {

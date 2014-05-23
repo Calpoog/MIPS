@@ -73,7 +73,7 @@ define(["underscore"], function(_) {
                 break;
             case 'i':
                 bits = instr.match(/^\s*[a-z]{1,4}\s+\$([a-z]?\d+|[a-z]{2,4})(?:(?:\s*,\s*)\$([a-z]?\d+|[a-z]{2,4}))?(?:(?:\s*,\s*)(\d+|[A-Za-z_]\w*))?$/m);
-                if (_.contains(['addi','addiu','beq','bne'], props.opcode)) {
+                if (_.contains(['beq','bne'], props.opcode)) {
                     // s,t,C
                     props.rs = bits[1];
                     props.rt = bits[2];
@@ -84,7 +84,7 @@ define(["underscore"], function(_) {
                     props.rt = bits[1];
                     props.immediate = bits[2];
                     props.rs = bits[3];
-                } else if (_.contains(['andi','ori','slti'], props.opcode)) {
+                } else if (_.contains(['addi','addiu','andi','ori','slti'], props.opcode)) {
                     // t,s,C
                     props.rt = bits[1];
                     props.rs = bits[2];
@@ -198,7 +198,7 @@ define(["underscore"], function(_) {
             var reg = props[register],
                 bits = [];
                 
-            if (reg === null || reg == undefined) { return; }
+            if (reg === null || reg === undefined) { return; }
             else if (reg == 'zero') { props[register] = 0; return; }
             
             bits = reg.match(/([a-z])(\d)/);

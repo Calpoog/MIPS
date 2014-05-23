@@ -13,7 +13,7 @@ define(["underscore"], function(_) {
         // reduce all spacing to 1
         text = text.replace(/([^\S\r\n])+/g, ' ');
         // remove newlines between label and instruction
-        text = text.replace(/(\w+\:)\s*(.*)\n/, '$1 $2\n');
+        text = text.replace(/(\w+\:)\s+(\S)/g, '$1 $2');
         // remove empty lines
         text = text.replace(/^\s*\n/gm, '');
         

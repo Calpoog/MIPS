@@ -11,7 +11,7 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
     
     Data.prototype.processDirective = function(line) {
         var self = this,
-            bits = line.command.match(/\.(\w+)(?:\s(.*))?/);
+            bits = line.command.match(/\.(\w+)(?:\s(.*))?/),
             label = line.label,
             // strip off directive
             cmd = bits[1],
@@ -42,7 +42,7 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
         values = values.split(',');
         _.each(values, function(val, i) {
             // TODO: verify word fits
-            self.labels.push(i == 0 ? label : '');
+            self.labels.push(i === 0 ? label : '');
             self.values.push({
                 label: label,
                 value: val.removeSpaces(),
@@ -85,7 +85,7 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
             output += label + ": " + JSON.stringify(self.values[i]) + '\n';
         });
         console.log(output);
-    }
+    };
     
     function isDataDirective(cmd) {
         return _.contains(directives, cmd);

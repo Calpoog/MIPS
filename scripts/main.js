@@ -1,5 +1,6 @@
-require(["underscore", "arch/instruction", "arch/tokenizer", "arch/program", "arch/memory"],
-        function(_, Instruction, Tokenizer, Program, Memory) {
+require(["underscore", "arch/instruction", "arch/tokenizer", "arch/program",
+        "arch/memory", "arch/execution"],
+        function(_, Instruction, Tokenizer, Program, Memory, Execution) {
             
     String.prototype.removeSpaces = function() {
         return this.replace(/\s/g, '');
@@ -48,15 +49,14 @@ require(["underscore", "arch/instruction", "arch/tokenizer", "arch/program", "ar
 "fred: .word 128,64\n"+
 ".word -78,-8\n"+
 "    .text\n"+
-"main:"+
-"    lui      $v0, 8 # billy bob\n"+
-"    lui      $a0, theString\n"+
-" bob:    add      $a1, $a0, $s1\n"+
-"    syscall\n"+
-"    jr      $ra    \n";
+"main:\n"+
+"addi $t0, $zero, 100\n"+
+"addi $t2, $zero, 200\n"+
+"addi $t3, $zero, 300\n"
+;
     
-    var p = new Program(t);
-        mem = new Memory(p);
-    p.display();
-    mem.display();
+    var p = new Program(t),
+        e = new Execution(p);
+    
+    
 });

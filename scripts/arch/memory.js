@@ -84,7 +84,7 @@ define(["underscore"], function(_) {
             m = self._memBottom[addr];
         
         // if unsigned or high bit of halfword is off, just give the lower bytes
-        if (!signed || (signed && (0x00008000 & m) == 0)) {
+        if (!signed || (signed && (0x00008000 & m) === 0)) {
             return 0x0000FFFF & self._memBottom[addr];
         } else {
             return 0xFFFF0000 | m;
@@ -96,11 +96,24 @@ define(["underscore"], function(_) {
             m = self._memBottom[addr];
         
         // if unsigned or high bit of halfword is off, just give the lower bytes
-        if (!signed || (signed && (0x00000080 & m) == 0)) {
+        if (!signed || (signed && (0x00000080 & m) === 0)) {
             return 0x000000FF & self._memBottom[addr];
         } else {
             return 0xFFFFFF00 | m;
         }
+    };
+    
+    Memory.prototype.store = function(type, addr, value) {
+        var self = this,
+            mask = 0xFFFFFFFF;
+        
+        if (type == 'half') {
+            mask = 0xFFFF;
+        } else if (type == 'byte') {
+            mask = 0xFF;
+        }
+        
+        self._memBottom[addr] = value & mask;
     };
     
     return Memory;
