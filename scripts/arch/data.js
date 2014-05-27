@@ -1,12 +1,13 @@
 define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
     
     var directives = ['ascii','asciiz','byte','double',
-            'float','half','space','word'];
+            'float','half','space','word','globl','extern'];
     
     function Data() {
         var self = this;
-        self.labels = [],
         self.values = [];
+        self.globals = [];
+        self.externs = [];
     }
     
     Data.prototype.processDirective = function(line) {
@@ -33,6 +34,12 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
             case 'space':
                 self._addSpace(label, params);
                 break;
+            case 'globl':
+                self.globals.push(params);
+                break;
+            case 'extern':
+                self.externs.push(params);
+                break;
         }
     };
     
@@ -42,9 +49,8 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
         values = values.split(',');
         _.each(values, function(val, i) {
             // TODO: verify word fits
-            self.labels.push(i === 0 ? label : '');
             self.values.push({
-                label: label,
+                label: i === 0 ? label : '',
                 value: val.removeSpaces(),
                 type: type
             });
@@ -54,10 +60,9 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
     Data.prototype._addAscii = function(label, ascii, nullTerminate) {
         var self = this;
         
-        self.labels.push(label);
         self.values.push({
             label: label,
-            value: ascii.replace(/"/g, ''),
+            value: ascii.replace(/"/g, '').replace(/\\n/, '\n'),
             type: "ascii",
             nt: nullTerminate
         });
@@ -65,8 +70,7 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
     
     Data.prototype._addSpace = function(label, space) {
         var self = this;
-        
-        self.labels.push(label);
+
         self.values.push({
             label: label,
             value: parseInt(space, 10),
@@ -81,8 +85,8 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
     Data.prototype.display = function() {
         var self = this,
             output = '';
-        _.each(self.labels, function(label, i) {
-            output += label + ": " + JSON.stringify(self.values[i]) + '\n';
+        _.each(self.values, function(val, i) {
+            output += val.label + ": " + JSON.stringify(val) + '\n';
         });
         console.log(output);
     };

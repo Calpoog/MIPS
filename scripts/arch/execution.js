@@ -11,14 +11,14 @@ define(["underscore", "arch/memory", "visual/executionView"],
         this._HI = 0;
         this._LO = 0;
         
-        // grab the instructions
-        this._instructions = program.getInstructions();
+        // grab the instructions from memory since pseudos have been replaced
+        this._instructions = this._memory.getInstructions();
         
         // initialize program counter
-        this._pc = 0;
+        this._pc = this._memory.startAddr;
         
         // initialize view
-        View.init(this);
+        View.init(this, this._memory);
     }
     
     Execution.prototype.doNext = function() {
@@ -27,17 +27,27 @@ define(["underscore", "arch/memory", "visual/executionView"],
         self.execute();
     };
     
+    Execution.prototype.state = function() {
+        var self = this;
+        return {
+            pc: self._pc-4,
+            instr: self._instructions[(self._pc-4)/4],
+            regs: self._regs,
+            mem: self._memory
+        };
+    };
+    
     Execution.prototype.execute = function() {
         var self = this,
-            instr = self._instructions[self._pc],
+            instr = self._instructions[self._pc/4],
             regs = self._regs,
             rd = instr.get('rd'),
             rs = instr.get('rs'),
             rt = instr.get('rt'),
             C = instr.get('immediate'),
-            address = instr.get('address'),
             shamt = instr.get('shamt'),
-            mem = self._memory;
+            mem = self._memory,
+            noInc = false;
             
         switch(instr.get('opcode')) {
             case 'add':     regs[rd] = regs[rs] + regs[rt]; break;
@@ -83,18 +93,60 @@ define(["underscore", "arch/memory", "visual/executionView"],
             case 'sllv':    regs[rd] = regs[rt] << regs[rs]; break;
             case 'srlv':    regs[rd] = regs[rt] >>> regs[rs]; break;
             case 'srav':    regs[rd] = regs[rt] >> regs[rs]; break;
-            case 'beq':     self._pc += (regs[rs] == regs[rt] ? (1 + C) : 0); break;
-            case 'bne':     self._pc += (regs[rs] != regs[rt] ? (1 + C) : 0); break;
-            case 'j':       self._pc = address; break;
-            case 'jr':      self._pc = regs[rs]; break;
+            case 'beq':     self._pc += (regs[rs] == regs[rt] ? (4+4*C) : 4); noInc = true; break;
+            case 'bne':     self._pc += (regs[rs] != regs[rt] ? (4+4*C) : 4); noInc = true; break;
+            case 'j':       self._pc = ((self._pc + 4) & 0xF0000000) | (C << 2); noInc = true; break;
+            case 'jr':      self._pc = regs[rs]; noInc = true; break;
             case 'jal':     
-                self._regs[31] = self._pc + 1;
-                self._pc = address;
+                self._regs[31] = self._pc + 8;
+                self._pc = ((self._pc + 4) & 0xF0000000) | (C << 2);
+                noInc = true;
+                break;
+            case 'syscall':
+                // syscall looks in $v0 for command
+                // TODO: Add float registers and stuff?
+                switch(self._regs[2]) {
+                    // print integer: $a0 is value to print
+                    case 1: console.log(self._regs[4]); break;
+                    // print float: $f12 is value to print
+                    case 2: console.log(self._regs[0]); break;
+                    // print double: $f12 is value to print
+                    case 3: console.log(self._regs[0]); break;
+                    // print string: $a0 is address of string
+                    case 4:
+                        var s = "",
+                            c = '';
+                        for (var i = self._regs[4]; c != '\0'; i+=4) {
+                            c = mem.loadWord(i);
+                            s += c;
+                        }
+                        console.log(s);
+                        break;
+                    // read integer: $v0 is value read
+                    case 5: console.log(self._regs[4]); break;
+                    // read float: $f0 is value read
+                    case 6: console.log(self._regs[4]); break;
+                    // read double: $f0 is value read
+                    case 7: console.log(self._regs[4]); break;
+                    // read string: $a0 is address where string will store
+                    //              $a1 is # chars to read + 1
+                    case 8: console.log(self._regs[4]); break;
+                    // memory allocate: $a0 is # of bytes of storage
+                    //                  $v0 is address of block
+                    case 9: console.log(self._regs[4]); break;
+                    // exit
+                    case 10: console.log("DONE"); break;
+                    // print char: $a0 is value to print as integer
+                    case 11: console.log(self._regs[4]); break;
+                    // read char: $v0 is value char read
+                    case 12: console.log(self._regs[4]); break;
+                }
+                
         }
         
-        self._pc++;
+        if (!noInc) self._pc+=4;
         
-        View.updateRegisters(self._regs);
+        View.update(self);
     };
     
     return Execution;

@@ -1,6 +1,6 @@
-require(["underscore", "arch/instruction", "arch/tokenizer", "arch/program",
+require(["underscore", "jquery", "arch/instruction", "arch/tokenizer", "arch/program",
         "arch/memory", "arch/execution"],
-        function(_, Instruction, Tokenizer, Program, Memory, Execution) {
+        function(_, $, Instruction, Tokenizer, Program, Memory, Execution) {
             
     String.prototype.removeSpaces = function() {
         return this.replace(/\s/g, '');
@@ -39,21 +39,29 @@ require(["underscore", "arch/instruction", "arch/tokenizer", "arch/program",
         console.log(i.props());
     });*/
     
-    var t = "     #asldkfj    \n"+
+    var t = $('#program').text();
+/*
+"     #asldkfj    \n"+
 "#dlkfjdlkjf\n"+
 "    .data\n"+
 "theString:\n"+
-"    .space 64\n"+
+"    .space 4\n"+
 'string: .ascii "calvin"\n'+
 'string2: .asciiz "calvin"\n'+
 "fred: .word 128,64\n"+
 ".word -78,-8\n"+
 "    .text\n"+
 "main:\n"+
+"lw $t1, fred($zero)\n"+
 "addi $t0, $zero, 100\n"+
 "addi $t2, $zero, 200\n"+
-"addi $t3, $zero, 300\n"
-;
+"addi $t3, $zero, 300\n"+
+"addi $s0, $zero, 5\n"+
+"loop: beq $t4, $s0, endloop\n"+
+"addi $t4, $t4, 1\n"+
+"j loop\n"+
+"endloop: addi $t5, $zero, 9999\n"
+;*/
     
     var p = new Program(t),
         e = new Execution(p);

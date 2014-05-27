@@ -1,6 +1,6 @@
 define(["underscore", "arch/tokenizer", "arch/data", "arch/text"], function(_, Tokenizer, Data, Text) {
-    var directives = ['align','ascii','asciiz','byte','data','double','extern',
-                      'float','globl','half','kdata','ktext','space','text','word'];
+    // directives that can be in both data and text section
+    var scopeDirectives = ['globl', 'extern'];
     
     function Program(text) {
         var self = this,
@@ -12,7 +12,11 @@ define(["underscore", "arch/tokenizer", "arch/data", "arch/text"], function(_, T
         
         //try {
             _.each(lines, function(line) {
-                var command = line.command;
+                var command = line.command,
+                    directive = command.match(/\.(\w+)/);
+                    
+                directive = directive ? directive[1] : null;
+                    
                 if (command == '.data') {
                     self.section = 'data';
                     return;
@@ -25,7 +29,7 @@ define(["underscore", "arch/tokenizer", "arch/data", "arch/text"], function(_, T
                     return;
                 }
                 
-                if (self.section == 'data') {
+                if (self.section == 'data' || _.contains(scopeDirectives, directive)) {
                     self._processData(line);
                 } else if (self.section == 'text') {
                     self._processText(line);
