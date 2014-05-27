@@ -1,4 +1,4 @@
-define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
+define(["underscore", "arch/syntaxException", "arch/hex"], function(_, SyntaxException, hex) {
     // private static vars
     var instrCount = 0,
         types = {
@@ -191,6 +191,28 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
         this._props[attr] = val;
     };
     
+    Instruction.prototype.encode = function() {
+        var self = this,
+            props = self._props,
+            encoding = "",
+            rs = props.rs || 0,
+            rd = props.rd || 0,
+            rt = props.rt || 0,
+            shamt = props.shamt || 0;
+        switch(props.type) {
+            case 'r':
+                encoding = props.opcode + (rs.toFixedBinary(5, 21) | rt.toFixedBinary(5, 16) | rd.toFixedBinary(5, 11) | shamt.toFixedBinary(6, 6)).toHex(32);// + hex(props.func);
+                break;
+            case 'i':
+                encoding = props.opcode + (rs.toFixedBinary(5, 21) | rt.toFixedBinary(5, 16) | props.immediate & 0xFFFF).toHex(32);
+                break;
+            case 'j':
+                encoding = props.opcode + (props.immediate.toFixedBinary(26)).toHex(32);
+                break;
+        }
+        return encoding;
+    };
+    
     // set error state on condition
     Instruction.prototype._errorIf = function(cond, error) {
         if (cond) {
@@ -230,9 +252,9 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
             if (reg === null || reg === undefined) { return; }
             else if (reg == 'zero') { props[register] = 0; return; }
             
-            if (reg.match(/\d\d/)) {
+            if (reg.match(/^\d+/)) {
                     props[register] = parseInt(reg, 10);
-            } else if (reg.match(/[a-z]{2}/)) {
+            } else if (reg.match(/^[a-z]{2}/)) {
                 switch (reg) {
                     case 'at': props[register] = 1; return;
                     case 'gp': props[register] = 28; return;
@@ -241,7 +263,7 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
                     case 'ra': props[register] = 31; return;
                 }
                 _this._error("Unrecognized register value: " + reg);
-            } else if (reg.match(/[a-z]\d/)) {
+            } else if (reg.match(/^[a-z]\d/)) {
                 var d = parseInt(reg.charAt(1), 10);
                 switch(reg.charAt(0)) {
                     case 'v':

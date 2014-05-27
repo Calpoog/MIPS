@@ -1,4 +1,16 @@
 #registers, #memory {
     float: left;
     width: 50%;
+    font-family: monospace;
+}
+
+#stdin {
+    line-height: 30px;
+    font-family: monospace;
+    padding: 0 15px;
+    height: 30px;
+    width: 100%;
+    position: fixed;
+    left: 0;
+    bottom: 0;
 }

@@ -123,7 +123,10 @@ define(["underscore", "arch/memory", "visual/executionView"],
                         console.log(s);
                         break;
                     // read integer: $v0 is value read
-                    case 5: console.log(self._regs[4]); break;
+                    case 5:
+                        self._regs[2] = readInt();
+                        console.log('Read: ' + self._regs[2]);
+                        break;
                     // read float: $f0 is value read
                     case 6: console.log(self._regs[4]); break;
                     // read double: $f0 is value read
@@ -148,6 +151,13 @@ define(["underscore", "arch/memory", "visual/executionView"],
         
         View.update(self);
     };
+    
+    function readInt() {
+        var val = View.getInput(),
+            num = val.match(/\d+/)[0];
+            
+        return parseInt(num, 10);
+    }
     
     return Execution;
     

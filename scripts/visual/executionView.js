@@ -1,4 +1,4 @@
-define(["underscore", "jquery", "arch/instruction"], function(_, $, Instruction) {
+define(["underscore", "jquery", "arch/instruction", "arch/hex"], function(_, $, Instruction) {
     
     var $registers = $('#registers'),
         $memory = $('#memory'),
@@ -22,16 +22,22 @@ define(["underscore", "jquery", "arch/instruction"], function(_, $, Instruction)
                 regs = state.regs;
                 
             $registers.empty()
-                .append('<div>PC: ' + hex(execution._pc) + '</div>')
-                .append('<div>INSTR: ' + state.instr.props().orig + '</div>');
+                .append('<div>PC: ' + execution._pc.toHex(32) + '</div>')
+                .append('<div>INSTR: ' + state.instr.props().orig + '</div>')
+                .append('<div>ENCODING: ' + state.instr.encode() + '</div>');
             _.each(regs, function(reg, i) {
-                $registers.append('<div>' + i + ": " + hex(reg) + '</div>');
+                $registers.append('<div>' + i + ": " + reg.toHex(32) + ' ' + reg + '</div>');
             });
             
             $memory.empty();
             _.each(mem.getMemory(), function(block, i) {
                 $memory.append('<div>' + hex(i*4) + ": " + (block instanceof Instruction?block.props().orig:block)  + '</div>');
             });
+        },
+        getInput: function() {
+            var val = $('#stdin').val();
+            $('#stdin').val('');
+            return val;
         }
     };
     
