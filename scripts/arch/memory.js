@@ -69,6 +69,11 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
                 if (_.contains(['bne','beq'], props.opcode)) {
                     adjusted = self._addresses[props.immediate] - addr - 4;
                 }
+                // j and jal addresses get shifted 2 left, so shift them 2 right here
+                // lets them hold a lot more in the address range
+                else if (_.contains(['j','jal'], props.opcode)) {
+                    adjusted = adjusted >> 2;
+                }
                 instr.set('immediate', adjusted);
             }
             

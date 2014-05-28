@@ -39,7 +39,7 @@ require(["underscore", "jquery", "arch/instruction", "arch/tokenizer", "arch/pro
         console.log(i.props());
     });*/
     
-    var t = $('#program').text();
+    var t = $('#program2').text();
 /*
 "     #asldkfj    \n"+
 "#dlkfjdlkjf\n"+

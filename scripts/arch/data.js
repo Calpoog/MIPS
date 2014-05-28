@@ -51,7 +51,7 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
             // TODO: verify word fits
             self.values.push({
                 label: i === 0 ? label : '',
-                value: val.removeSpaces(),
+                value: parseFloat(val.removeSpaces()),
                 type: type
             });
         });

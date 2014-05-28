@@ -30,8 +30,8 @@ define(["underscore", "arch/memory", "visual/executionView"],
     Execution.prototype.state = function() {
         var self = this;
         return {
-            pc: self._pc-4,
-            instr: self._instructions[(self._pc-4)/4],
+            pc: self._pc,
+            instr: self._instructions[(self._pc)/4],
             regs: self._regs,
             mem: self._memory
         };
@@ -48,6 +48,8 @@ define(["underscore", "arch/memory", "visual/executionView"],
             shamt = instr.get('shamt'),
             mem = self._memory,
             noInc = false;
+            
+        View.update(self);
             
         switch(instr.get('opcode')) {
             case 'add':     regs[rd] = regs[rs] + regs[rt]; break;
@@ -148,8 +150,6 @@ define(["underscore", "arch/memory", "visual/executionView"],
         }
         
         if (!noInc) self._pc+=4;
-        
-        View.update(self);
     };
     
     function readInt() {

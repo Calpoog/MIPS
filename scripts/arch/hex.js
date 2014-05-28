@@ -19,4 +19,6 @@ define([], function() {
         
         return (this & mask) << shamt;
     };
+    
+    return {};
 });
