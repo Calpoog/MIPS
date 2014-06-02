@@ -1,6 +1,6 @@
-#registers, #memory {
+#registers, #memory, #stack {
     float: left;
-    width: 50%;
+    width: 33.33%;
     font-family: monospace;
 }
 

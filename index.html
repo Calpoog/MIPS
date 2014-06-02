@@ -12,10 +12,12 @@
 <body>
     
 <div class="buttons">
-    <button>Next</button>
+    <button id="next">Next</button>
+    <button id="run">Run</button>
 </div>
 <div id="registers"></div>
 <div id="memory"></div>
+<div id="stack"></div>
 <input type="text" id="stdin" />
 
 <div id="program2">
@@ -40,6 +42,7 @@ main:
 	# Call function
 	move	$a0, $s0	# Argument 1: x ($s0)
 	jal	fun		# Save current PC in $ra, and jump to fun
+    nop
 	move	$s1,$v0		# Return value saved in $v0. This is y ($s1)
 
 	# Print msg1
@@ -136,18 +139,21 @@ AckermannFunc:
 LABEL_IF:      # check whether m==0
             # if not then branch to LABEL_ELSE_IF
             bne   $a0, $zero, LABEL_ELSE_IF
+            nop
 
             #  code for "result = n+1"
             addi   $v0,   $a1,   1
 
             # jump to LABEL_DONE
             j LABEL_DONE
+            nop
 
 
 LABEL_ELSE_IF:
             # check whether n==0
             #if not then branch to LABEL_ELSE
             bne $a1, $zero,   LABEL_ELSE
+            nop
 
             # need to call A(m-1,1)
             # so initiate $a0,$a1 with m-1 and 1 
@@ -157,10 +163,12 @@ LABEL_ELSE_IF:
 
             # call AckermannFunc
             jal   AckermannFunc
+            nop
             # Return value already in $v0         
 
             # jump to LABEL_DONE
             j LABEL_DONE
+            nop
 
 LABEL_ELSE:      # This block may be a bit tricky !
             ###################################
@@ -171,6 +179,7 @@ LABEL_ELSE:      # This block may be a bit tricky !
             # call to acker(m, (n - 1))
               addi    $a1, $a1, -1
               jal AckermannFunc
+              nop
             # return value will be used very soon!
 
             # call to acker(m-1, acker(m, (n - 1)))
@@ -178,9 +187,11 @@ LABEL_ELSE:      # This block may be a bit tricky !
            addi    $a0, $s0, -1
            add     $a1, $v0, $zero
            jal AckermannFunc
+           nop
 
             # jump to LABEL_DONE
               j   LABEL_DONE
+              nop
 
 LABEL_DONE:            
             # ALREADY loaded the return value register $v0 with result.
@@ -194,6 +205,7 @@ LABEL_DONE:
 
             # return from this function
             jr $ra
+            nop
 
 
 .text 
@@ -247,6 +259,7 @@ Print:
    addi   $sp, $sp, 4   # restore stack pointer
 
    jr   $ra      # return
+   nop
 
 .globl   main 
 
@@ -282,6 +295,7 @@ main:
    move   $a1, $s1   # second parameter = n
 
    jal   AckermannFunc
+   nop
    move   $s2, $v0   # Ackermann value = s2 = value returned
 
     # Print parameter setup       
@@ -290,6 +304,7 @@ main:
    move    $a2, $s2   #
 
    jal Print
+   nop
    li   $v0, 0      # return value for main
 
    lw   $ra, 0($sp)   # restore return address
@@ -298,7 +313,9 @@ main:
    lw   $s2, 12($sp)
    addi   $sp, $sp, 16   # restore stack pointer
 
-   jr   $ra     # return to Operating System
+   addi $v0, $zero, 10
+   syscall
+   #jr   $ra     # return to Operating System
 
 
 .data 
@@ -308,4 +325,5 @@ prompt_n: .asciiz   "n="
 msg1:   .asciiz   "Ackermann("
 msg2:   .asciiz   ")="
 comma:  .asciiz ","   
-endl:   .asciiz   "\n" 
+endl:   .asciiz   "\n"
+</div>

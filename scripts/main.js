@@ -1,6 +1,6 @@
-require(["underscore", "jquery", "arch/instruction", "arch/tokenizer", "arch/program",
+require(["underscore", "jquery", "arch/instruction", "arch/tokenizer", "arch/assembler",
         "arch/memory", "arch/execution"],
-        function(_, $, Instruction, Tokenizer, Program, Memory, Execution) {
+        function(_, $, Instruction, Tokenizer, Assembler, Memory, Execution) {
             
     String.prototype.removeSpaces = function() {
         return this.replace(/\s/g, '');
@@ -39,7 +39,7 @@ require(["underscore", "jquery", "arch/instruction", "arch/tokenizer", "arch/pro
         console.log(i.props());
     });*/
     
-    var t = $('#program2').text();
+    var t = $('#program').text();
 /*
 "     #asldkfj    \n"+
 "#dlkfjdlkjf\n"+
@@ -63,8 +63,8 @@ require(["underscore", "jquery", "arch/instruction", "arch/tokenizer", "arch/pro
 "endloop: addi $t5, $zero, 9999\n"
 ;*/
     
-    var p = new Program(t),
-        e = new Execution(p);
+    var a = new Assembler(t),
+        e = new Execution(a);
     
     
 });

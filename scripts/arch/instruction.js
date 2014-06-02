@@ -28,7 +28,7 @@ define(["underscore", "arch/syntaxException", "arch/hex"], function(_, SyntaxExc
         this._props = props;
         
         // special case, syscall just leave it
-        if (props.opcode == 'syscall') return;
+        if (props.opcode == 'syscall' || props.opcode == 'nop') return;
         
         // first determine instruction type
         _.each(types, function(ops, type) {
@@ -63,7 +63,7 @@ define(["underscore", "arch/syntaxException", "arch/hex"], function(_, SyntaxExc
                     props.rd = bits[1];
                     props.rt = bits[2];
                     props.rs = bits[3];
-                } else if (this.opcode == 'jr') {
+                } else if (props.opcode == 'jr') {
                     // s
                     props.rs = bits[1];
                 } else {

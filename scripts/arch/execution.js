@@ -2,20 +2,26 @@ define(["underscore", "arch/memory", "visual/executionView"],
     function(_, Memory, View) {
     
     // takes a program object to execute
-    function Execution(program) {
+    function Execution(assembler) {
         // load the program into memory
-        this._memory = new Memory(program);
+        this._memory = new Memory(assembler);
         
         // initialize the registers
         this._regs = Array.fill(32, 0);
+        this._regs[29] = 0x80000000;
         this._HI = 0;
         this._LO = 0;
+        
+        this._done = false;
+        this._running = false;
+        this.execCount = 0;
+        this.execTime = 0;
         
         // grab the instructions from memory since pseudos have been replaced
         this._instructions = this._memory.getInstructions();
         
         // initialize program counter
-        this._pc = this._memory.startAddr;
+        this._pc = assembler.startAddr;
         
         // initialize view
         View.init(this, this._memory);
@@ -24,7 +30,16 @@ define(["underscore", "arch/memory", "visual/executionView"],
     Execution.prototype.doNext = function() {
         var self = this;
         
-        self.execute();
+        if (!self._done) self.execute();
+    };
+    
+    Execution.prototype.run = function() {
+        var self = this;
+        
+        self._running = true;
+        while (!self._done) {
+            self.execute();
+        }
     };
     
     Execution.prototype.state = function() {
@@ -47,11 +62,13 @@ define(["underscore", "arch/memory", "visual/executionView"],
             C = instr.get('immediate'),
             shamt = instr.get('shamt'),
             mem = self._memory,
-            noInc = false;
+            noInc = false,
+            time = Date.now();
             
-        View.update(self);
+        if (!self._running) View.update(self);
             
         switch(instr.get('opcode')) {
+            case 'nop':     break;
             case 'add':     regs[rd] = regs[rs] + regs[rt]; break;
             case 'addu':    regs[rd] = (regs[rs] >>> 0) + (regs[rt] >>> 0); break;
             case 'sub':     regs[rd] = regs[rs] - regs[rt]; break;
@@ -126,8 +143,10 @@ define(["underscore", "arch/memory", "visual/executionView"],
                         break;
                     // read integer: $v0 is value read
                     case 5:
-                        self._regs[2] = readInt();
-                        console.log('Read: ' + self._regs[2]);
+                        var result = self._readInt();
+                        if (self._done) return;
+                        self._regs[2] = result;
+                        console.log('Read: ' + result);
                         break;
                     // read float: $f0 is value read
                     case 6: console.log(self._regs[4]); break;
@@ -140,7 +159,7 @@ define(["underscore", "arch/memory", "visual/executionView"],
                     //                  $v0 is address of block
                     case 9: console.log(self._regs[4]); break;
                     // exit
-                    case 10: console.log("DONE"); break;
+                    case 10: console.log("DONE"); self._done = true; break;
                     // print char: $a0 is value to print as integer
                     case 11: console.log(self._regs[4]); break;
                     // read char: $v0 is value char read
@@ -150,14 +169,27 @@ define(["underscore", "arch/memory", "visual/executionView"],
         }
         
         if (!noInc) self._pc+=4;
+        
+        self.execCount++;
+        self.execTime += (Date.now() - time);
     };
     
-    function readInt() {
-        var val = View.getInput(),
-            num = val.match(/\d+/)[0];
+    Execution.prototype._readInt = function() {
+        var self = this,
+            val = View.getInput(),
+            num = val.match(/\d+/);
+            
+        if (num === null) {
+            self._done = true;
+            View.waitForInput(function() {
+                self._done = false;
+                self._running ? self.run() : self.execute();
+            });
+            return null;
+        }
             
         return parseInt(num, 10);
-    }
+    };
     
     return Execution;
     

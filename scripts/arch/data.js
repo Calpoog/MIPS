@@ -8,6 +8,7 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
         self.values = [];
         self.globals = [];
         self.externs = [];
+        self._labels = {};
     }
     
     Data.prototype.processDirective = function(line) {
@@ -16,20 +17,24 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
             label = line.label,
             // strip off directive
             cmd = bits[1],
-            params = bits[2];
+            params = bits[2],
+            noLabel = false;
+            
         if (!isDataDirective(cmd)) {
             throw new SyntaxException('Non data directive '+cmd+' outside .data section');
         }
+        
+        if (label && !_.contains(['globl','extern'], cmd)) self._labels[label] = self.values.length*4;
         
         switch(cmd) {
             case 'word': case 'byte': case 'double': case 'float': case 'half':
                 self._addListType(cmd, label, params);
                 break;
             case 'ascii':
-                self._addAscii(label, params, true);
+                self._addAscii(label, params, false);
                 break;
             case 'asciiz':
-                self._addAscii(label, params, false);
+                self._addAscii(label, params, true);
                 break;
             case 'space':
                 self._addSpace(label, params);
@@ -43,39 +48,43 @@ define(["underscore", "arch/syntaxException"], function(_, SyntaxException) {
         }
     };
     
+    // relocates all of the addresses (since they come after instructions)
+    Data.prototype.offsetLabels = function(offset) {
+        var self = this;
+        _.each(self._labels, function(addr, label) {
+            self._labels[label] += offset;
+        });
+    };
+    
+    Data.prototype.getDataLabels = function() {
+        return this._labels;
+    };
+    
     Data.prototype._addListType = function(type, label, values) {
         var self = this;
         
         values = values.split(',');
         _.each(values, function(val, i) {
             // TODO: verify word fits
-            self.values.push({
-                label: i === 0 ? label : '',
-                value: parseFloat(val.removeSpaces()),
-                type: type
-            });
+            self.values.push(parseFloat(val.removeSpaces()));
         });
     };
     
     Data.prototype._addAscii = function(label, ascii, nullTerminate) {
-        var self = this;
-        
-        self.values.push({
-            label: label,
-            value: ascii.replace(/"/g, '').replace(/\\n/, '\n'),
-            type: "ascii",
-            nt: nullTerminate
+        var self = this,
+            values = ascii.replace(/"/g, '').replace(/\\n/, '\n').split('');
+            
+        _.each(values, function(val, i) {
+            self.values.push(val);
         });
+        
+        if (nullTerminate) self.values.push('\0');
     };
     
     Data.prototype._addSpace = function(label, space) {
         var self = this;
 
-        self.values.push({
-            label: label,
-            value: parseInt(space, 10),
-            type: "space"
-        });
+        self.values = self.values.concat(Array.fill(space, 0));
     };
     
     Data.prototype.getDirectives = function() {

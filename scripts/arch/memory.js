@@ -1,13 +1,14 @@
 define(["underscore", "arch/instruction"], function(_, Instruction) {
+    var nops = ['beq','bne','jal','j','jr'];
     
     // takes reference to a program object to load
-    function Memory(program) {
+    function Memory(assembler) {
         // memory is just an array of words
         // split memory up so we don't have to hold stuff that doesn't exist or may not ever
         // Memory is byte addressable, but 32bit, so addresses are multiples of 4
         var self = this,
-            text = program.getText(),
-            data = program.getData();
+            instructions = assembler.getInstructions(),
+            data = assembler.getData();
         
         self._memBottom = [];
         self._memTop = [];
@@ -16,13 +17,10 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
         self._addresses = {};
             
         // load in the text from the bottom
-        self._loadText(text);
+        self._loadText(instructions);
         
         // load data above it
         self._loadData(data);
-        
-        // do a second pass to replace labels with addresses
-        self._secondPass(text);
     }
     
     Memory.prototype.display = function() {
@@ -44,6 +42,18 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
         return this._memBottom;
     };
     
+    Memory.prototype.getStack = function() {
+        return reverse(this._memTop);
+    };
+    
+    function reverse(arr) {
+        var narr = [];
+        for (var i = arr.length - 1; i >= 0; i--) {
+            narr.push(arr[i]);
+        }
+        return narr;
+    }
+    
     Memory.prototype.getInstructions = function() {
         var self = this;
         return _.filter(self._memBottom, function(block) {
@@ -51,6 +61,7 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
         });
     };
     
+    /*
     Memory.prototype._secondPass = function(text) {
         var self = this;
         // for loop because we splice in new instructions, length grows
@@ -67,7 +78,7 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
             if (props.relocate && props.immediate !== null) {
                 // PC relative
                 if (_.contains(['bne','beq'], props.opcode)) {
-                    adjusted = self._addresses[props.immediate] - addr - 4;
+                    adjusted = (self._addresses[props.immediate] - addr - 4) >> 2;
                 }
                 // j and jal addresses get shifted 2 left, so shift them 2 right here
                 // lets them hold a lot more in the address range
@@ -87,8 +98,9 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
     };
     
     Memory.prototype._loadText = function(text) {
-        var self = this;
-        _.each(text.getInstructions(), function(instr) {
+        var self = this,
+            instructions = text.getInstructions();
+        _.each(instructions, function(instr, i) {
             var props = instr.props(),
                 rt = '$'+props.rt,
                 rs = '$'+props.rs,
@@ -126,32 +138,42 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
                         self._memBottom.push(lui, ori);
                         break;
                     case 'b':
-                        self._memBottom.push(makeInstruction("beq", "$zero", "$zero", C)); break;
+                        self._memBottom.push(
+                            makeInstruction("beq", "$zero", "$zero", C),
+                            makeInstruction("nop"));
+                        break;
                     case 'bal':
                         // TODO: bgezal doesn't work yet
                         self._memBottom.spush(makeInstruction("bgezal", "$zero", C)); break;
                     case 'bgt': case 'ble':
                         self._memBottom.push(
                             makeInstruction("slt", "$at", rt, rs),
-                            makeInstruction("beq", "$at", "$zero", C));
+                            makeInstruction("beq", "$at", "$zero", C),
+                            makeInstruction("nop"));
                         break;
                     case 'blt': case 'bge':
                         self._memBottom.push(
                             makeInstruction("slt", "$at", rs, rt),
-                            makeInstruction("beq", "$at", "$zero", C));
+                            makeInstruction("beq", "$at", "$zero", C),
+                            makeInstruction("nop"));
                         break;
                     case 'bgtu':
                         self._memBottom.push(
                             makeInstruction("slt", "$at", rs, rt),
-                            makeInstruction("bne", "$at", "$zero", C));
+                            makeInstruction("bne", "$at", "$zero", C),
+                            makeInstruction("nop"));
                         break;
                     case 'bgtz':
                         self._memBottom.push( 
                             makeInstruction("slt", "$at", rs, rt),
-                            makeInstruction("bne", "$at", "$zero", C));
+                            makeInstruction("bne", "$at", "$zero", C),
+                            makeInstruction("nop"));
                         break;
                     case 'beqz':
-                        self._memBottom.push(makeInstruction("beq", rs, "$zero", C)); break;
+                        self._memBottom.push(
+                            makeInstruction("beq", rs, "$zero", C),
+                            makeInstruction("nop"));
+                        break;
                     case 'mul':
                         self._memBottom.push(
                             makeInstruction("mult", rs, rt),
@@ -170,57 +192,84 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
                 }
             } else {
                 self._memBottom.push(instr);
+                
+                // certain instructions require a nop, put it in for them if they don't have it
+                if (_.contains(nops, instr.props().opcode) && instructions[i+1]
+                    && instructions[i+1].props().opcode != 'nop') {
+                    self._memBottom.push(makeInstruction("nop"));
+                }
             }
         });
+    };*/
+    
+    Memory.prototype._loadText = function(instructions) {
+        var self = this;
+        
+        // throw these bad boys in memory
+        self._memBottom = [].concat(instructions);
     };
     
     Memory.prototype._loadData = function(data) {
         var self = this;
-        _.each(data.getDirectives(), function(dir) {
-            var type = dir.type,
-                label = dir.label,
-                value = dir.value;
-            if (label) {
-                self._addresses[label] = self._memBottom.length * 4;
-            }
-            switch(type) {
-                case 'word': case 'byte': case 'double': case 'float': case 'half':
-                    self._memBottom.push(value);
-                    break;
-                case 'ascii':
-                    value = value.split('');
-                    if (dir.nt) {
-                        self._memBottom = self._memBottom.concat(value);
-                    } else {
-                        value.push('\0');
-                        self._memBottom = self._memBottom.concat(value);
-                    }
-                    break;
-                case 'space':
-                    self._memBottom = self._memBottom.concat(Array.fill(value, 0));
-                    break;
-            }
-        });
+        
+        // dump the data out on top of the instructions
+        self._memBottom = self._memBottom.concat(data.getDirectives());
     };
     
     
     // for all the loading stuff, addr incoming needs /4 to match mem array indices
-    Memory.prototype.loadWord = function(addr) {
-        var self = this;
+    
+    // set mem at addr to value. adjusts hex addr to array index and chooses between
+    // top/bottom of memory (since we don't maintain the middle)
+    Memory.prototype._memSet = function(addr, value) {
+        this._memOp('set', addr, value);
+    };
+    Memory.prototype._memGet = function(addr) {
+        return this._memOp('get', addr);
+    };
+    Memory.prototype._memOp = function(type, addr, value) {
+        var self = this,
+            mem = self._memBottom;
+        
+        // convert to an array index
         addr /= 4;
         
-        return self._memBottom[addr];
+        // if it's out of bounds of lower memory, try stack
+        if (addr >= mem.length) {
+            // we allocate '256MB', so subtract address from 256MB to get offset in stack array
+            // Low indexes (0) of stack array are high address (0x80000000)
+            addr = (0x80000000 >>> 2) - addr;
+            mem = self._memTop;
+            
+            // if it's out of bounds of the stack, we need to add more room
+            if (addr >= mem.length) {
+                diff = addr - mem.length + 1;
+                self._memTop = mem.concat(Array.fill(diff, 0));
+                mem = self._memTop;
+            }
+        }
+        
+        if (type == 'get') {
+            return mem[addr];
+        }
+        
+        mem[addr] = value;
+        return null; // satisfy strict
+    };
+    
+    Memory.prototype.loadWord = function(addr) {
+        var self = this;
+        
+        return self._memGet(addr);
     };
     
     Memory.prototype.loadHalf = function(addr, signed) {
         var self = this,
-            m = self._memBottom[addr];
-            
-        addr /= 4;
+            m = self._memGet(addr);
         
         // if unsigned or high bit of halfword is off, just give the lower bytes
         if (!signed || (signed && (0x00008000 & m) === 0)) {
-            return 0x0000FFFF & self._memBottom[addr];
+            return 0x0000FFFF & m;
         } else {
             return 0xFFFF0000 | m;
         }
@@ -229,12 +278,10 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
     Memory.prototype.loadByte = function(addr, signed) {
         var self = this,
             m = self._memBottom[addr];
-            
-        addr /= 4;
         
-        // if unsigned or high bit of halfword is off, just give the lower bytes
+        // if unsigned or high bit of byte is off, just give the lower bytes
         if (!signed || (signed && (0x00000080 & m) === 0)) {
-            return 0x000000FF & self._memBottom[addr];
+            return 0x000000FF & m;
         } else {
             return 0xFFFFFF00 | m;
         }
@@ -243,8 +290,6 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
     Memory.prototype.store = function(type, addr, value) {
         var self = this,
             mask = 0xFFFFFFFF;
-            
-        addr /= 4;
         
         if (type == 'half') {
             mask = 0xFFFF;
@@ -252,7 +297,7 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
             mask = 0xFF;
         }
         
-        self._memBottom[addr] = value & mask;
+        self._memSet(addr, value & mask);
     };
     
     function makeInstruction() {
