@@ -17,8 +17,7 @@ define(["underscore", "arch/memory", "visual/executionView"],
         this.execCount = 0;
         this.execTime = 0;
         
-        // grab the instructions from memory since pseudos have been replaced
-        this._instructions = this._memory.getInstructions();
+        this._instructions = assembler.getInstructions();
         
         // initialize program counter
         this._pc = assembler.startAddr;

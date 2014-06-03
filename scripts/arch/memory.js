@@ -1,5 +1,4 @@
 define(["underscore", "arch/instruction"], function(_, Instruction) {
-    var nops = ['beq','bne','jal','j','jr'];
     
     // takes reference to a program object to load
     function Memory(assembler) {
@@ -12,9 +11,6 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
         
         self._memBottom = [];
         self._memTop = [];
-        self.startAddr = null;
-        // remember _addresses of labels
-        self._addresses = {};
             
         // load in the text from the bottom
         self._loadText(instructions);
@@ -34,10 +30,6 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
         console.log(output);
     };
     
-    Memory.prototype.getLabelAddress = function(label) {
-        return this._addresses[label];
-    };
-    
     Memory.prototype.getMemory = function() {
         return this._memBottom;
     };
@@ -53,154 +45,6 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
         }
         return narr;
     }
-    
-    Memory.prototype.getInstructions = function() {
-        var self = this;
-        return _.filter(self._memBottom, function(block) {
-            return (block instanceof Instruction);
-        });
-    };
-    
-    /*
-    Memory.prototype._secondPass = function(text) {
-        var self = this;
-        // for loop because we splice in new instructions, length grows
-        for(var i = 0; i < self._memBottom.length; i++) {
-            var instr = self._memBottom[i],
-                addr = i * 4;
-            
-            // if we've passed the instructions, then stop
-            if (!(instr instanceof Instruction)) return;
-            
-            var props = instr.props(),
-                adjusted = self._addresses[props.immediate];
-                
-            if (props.relocate && props.immediate !== null) {
-                // PC relative
-                if (_.contains(['bne','beq'], props.opcode)) {
-                    adjusted = (self._addresses[props.immediate] - addr - 4) >> 2;
-                }
-                // j and jal addresses get shifted 2 left, so shift them 2 right here
-                // lets them hold a lot more in the address range
-                else if (_.contains(['j','jal'], props.opcode)) {
-                    adjusted = adjusted >> 2;
-                }
-                instr.set('immediate', adjusted);
-            }
-            
-            // la and li need the replaced label address bitwise broken up
-            if (props.loadUpper) {
-                instr.set('immediate', (props.immediate & 0xFFFF0000) >> 16);
-            } else if (props.loadLower) {
-                instr.set('immediate', props.immediate & 0xFFFF);
-            }
-        }
-    };
-    
-    Memory.prototype._loadText = function(text) {
-        var self = this,
-            instructions = text.getInstructions();
-        _.each(instructions, function(instr, i) {
-            var props = instr.props(),
-                rt = '$'+props.rt,
-                rs = '$'+props.rs,
-                rd = '$'+props.rd,
-                C = props.immediate,
-                label = props.label,
-                addr = self._memBottom.length * 4;
-                
-            if (label) {
-                // record label address
-                self._addresses[label] = addr;
-                
-                // remember start of program (label main)
-                if (label == 'main') {
-                    self.startAddr = addr;
-                }
-            }
-            
-            // convert pseudo instruction to real ones.
-            if (props.type == 'p') {
-                switch(props.opcode) {
-                    case 'move':
-                        self._memBottom.push(makeInstruction("add", rt, rs, "$zero")); break;
-                    case 'clear':
-                        self._memBottom.push(makeInstruction("add", rt, "$zero", "$zero")); break;
-                    case 'not':
-                        self._memBottom.push(makeInstruction("nor", rt, rs, "$zero")); break;
-                    case 'la': case 'li':
-                        // these Cs actually need split up into lower and upper halves but we don't have the addresses yet
-                        // do that in the second pass
-                        var lui = makeInstruction("lui", rd, C),
-                            ori = makeInstruction("ori", rd, rd, C);
-                        lui.set('loadUpper', true);
-                        ori.set('loadLower', true);
-                        self._memBottom.push(lui, ori);
-                        break;
-                    case 'b':
-                        self._memBottom.push(
-                            makeInstruction("beq", "$zero", "$zero", C),
-                            makeInstruction("nop"));
-                        break;
-                    case 'bal':
-                        // TODO: bgezal doesn't work yet
-                        self._memBottom.spush(makeInstruction("bgezal", "$zero", C)); break;
-                    case 'bgt': case 'ble':
-                        self._memBottom.push(
-                            makeInstruction("slt", "$at", rt, rs),
-                            makeInstruction("beq", "$at", "$zero", C),
-                            makeInstruction("nop"));
-                        break;
-                    case 'blt': case 'bge':
-                        self._memBottom.push(
-                            makeInstruction("slt", "$at", rs, rt),
-                            makeInstruction("beq", "$at", "$zero", C),
-                            makeInstruction("nop"));
-                        break;
-                    case 'bgtu':
-                        self._memBottom.push(
-                            makeInstruction("slt", "$at", rs, rt),
-                            makeInstruction("bne", "$at", "$zero", C),
-                            makeInstruction("nop"));
-                        break;
-                    case 'bgtz':
-                        self._memBottom.push( 
-                            makeInstruction("slt", "$at", rs, rt),
-                            makeInstruction("bne", "$at", "$zero", C),
-                            makeInstruction("nop"));
-                        break;
-                    case 'beqz':
-                        self._memBottom.push(
-                            makeInstruction("beq", rs, "$zero", C),
-                            makeInstruction("nop"));
-                        break;
-                    case 'mul':
-                        self._memBottom.push(
-                            makeInstruction("mult", rs, rt),
-                            makeInstruction("mflo", rd));
-                        break;
-                    case 'div':
-                        self._memBottom.push(
-                            makeInstruction("div", rs, rt),
-                            makeInstruction("mflo", rd));
-                        break;
-                    case 'rem':
-                        self._memBottom.push(
-                            makeInstruction("div", rs, rt),
-                            makeInstruction("mfhi", rd));
-                        break;
-                }
-            } else {
-                self._memBottom.push(instr);
-                
-                // certain instructions require a nop, put it in for them if they don't have it
-                if (_.contains(nops, instr.props().opcode) && instructions[i+1]
-                    && instructions[i+1].props().opcode != 'nop') {
-                    self._memBottom.push(makeInstruction("nop"));
-                }
-            }
-        });
-    };*/
     
     Memory.prototype._loadText = function(instructions) {
         var self = this;
@@ -229,6 +73,7 @@ define(["underscore", "arch/instruction"], function(_, Instruction) {
     };
     Memory.prototype._memOp = function(type, addr, value) {
         var self = this,
+            diff = null,
             mem = self._memBottom;
         
         // convert to an array index

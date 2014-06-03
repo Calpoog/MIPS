@@ -7,7 +7,7 @@ define(["underscore", "jquery", "arch/instruction", "arch/hex"], function(_, $, 
         execution = null;
         
     function regName(num) {
-        if (num == 0) {
+        if (num === 0) {
             return "$zero";
         } else if (num == 1) {
             return "$at";
